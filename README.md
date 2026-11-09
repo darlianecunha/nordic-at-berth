@@ -1,36 +1,44 @@
-# Piloto AIS Europa (inventário por escala em um porto europeu)
+# Nordic At-Berth CO2
 
-Objetivo: aplicar o método Itaqui/Paranaguá (escalas, fases, maritimeco2) a um porto europeu com AIS aberto,
-para o CV do Vici (evidência de transferência) e para a Proposta B.
+At-berth CO2 emissions from the auxiliary engines of cargo ships in **all Finnish ports** and **19 Norwegian ports**, 2019 to 2025, estimated call by call from open national port-call registers. Preliminary results, November 2026.
 
-## Fontes abertas testadas em 07/11/2026
+Live page: https://nordic-at-berth.vercel.app
 
-| Fonte | Cobertura | Histórico | Acesso | Situação |
-|---|---|---|---|---|
-| Danish Maritime Authority, aisdata.ais.dk (novo endereco; o antigo web.ais.dk saiu do ar) | Águas dinamarquesas (Aarhus, Copenhague, Fredericia, Esbjerg, Kalundborg...) | Diário desde 2006, CSV em .zip (centenas de MB/dia) | Sem login | Funciona por http; download direto do bucket S3 |
-| Kystdatahuset (Kystverket, Noruega) | Águas norueguesas | Histórico via API | Cadastro gratuito em kystdatahuset.no/api-access | Aberta sem login; usada |
-| Digitraffic (Fintraffic, Finlândia) | Águas finlandesas | Só posições atuais (API aberta, funciona); histórico não | Sem login | Útil só com coletor contínuo |
-| Global Fishing Watch API | Global, eventos de escala em porto (port visits) derivados de AIS | Desde 2012 | Token gratuito | Pendente de cadastro; dá escalas, não fases |
-| NOAA MarineCadastre (EUA) | Costa dos EUA | Diário, aberto | Sem login | Funciona; fora da Europa |
+## What the page shows
 
-## Resultados em 07/11/2026
+- At-berth CO2 by year, with the change 2019 to 2025
+- LMDI decomposition of that change into number of calls, time at berth and vessel power
+- Concentration by port and, for Finland, by berth (the Finnish register records a berth code on every call)
+- Shore-power ceiling by year, using each year's national grid emission factor
+- Segment shares (general cargo and ro-ro, container, liquid bulk, dry bulk)
 
-**Noruega (Kystdatahuset, API aberta sem login)**: `noruega/dados/` tem 211.965 escalas em 19 portos (2019-2025), com navio, tipo, GT, DWT, chegada, saida e horas atracado, mais 43.075 escalas em cais com shore power (`escalas_osps_2019_2025.csv`). Script: `noruega/baixar_kystdatahuset.py`.
+## Method
 
-`noruega/inventario_atberth.py` aplica o metodo do inventario Itaqui/Paranagua (IMO GHG4, Tabela 17; MDO por ser SECA) aos quatro segmentos de carga: 100.080 escalas no escopo, **971 mil t de CO2 at-berth em 2019-2025** (75% granel liquido, puxado por Mongstad e Karsto; carga geral 12%, conteiner 8%, granel solido 5%). Saidas em `noruega/inventario/`: `inventario_porto_ano.csv`, `inventario_porto_ano_segmento.csv`, `escalas_com_co2.csv` (linha a linha) e `fora_do_escopo_horas.csv` (passageiros, ro-pax, cruzeiros, pesca, offshore, rebocadores: 9,8 milhoes de horas sem CO2 calculado, por falta de tabela de potencia nesses segmentos).
+The inventory follows Cunha, D. R., Oliveira, C. B. M., Santos, V. R. P., & Pinheiro, R. E. P. (2026). At-berth CO2 emissions at a Brazilian bulk-heavy multi-cargo port: drivers, shore power potential and implications for port decarbonisation management. *Case Studies on Transport Policy*, 26, 102005. https://doi.org/10.1016/j.cstp.2026.102005
 
-Ressalvas: 2024 tem o dobro de escalas dos outros anos (provavel mudanca de cobertura da Kystverket; confirmar antes de usar em serie); 478 escalas tiveram DWT imputado por GT; a caldeira de navios-tanque atracados segue a hipotese do modelo brasileiro (1.350 kW nas faixas maiores) e e o que faz Mongstad dominar.
+CO2 = auxiliary power at berth (Fourth IMO GHG Study, by segment and DWT class) × hours alongside × SFOC (185 g/kWh, MGO) × 3.206 g CO2 per g fuel.
 
-**Dinamarca (aisdata.ais.dk, bucket S3 aberto, AIS bruto diario desde 2006, 550-750 MB/dia)**: 1 a 3 de outubro de 2026 baixados e filtrados para Aarhus, Copenhague e Fredericia (`dinamarca/*.csv`, so Class A, sem pesca/lazer/rebocador). Proximo passo: reconstruir escalas e fases (fundeio, manobra, atracacao) por MMSI.
+Limits: auxiliary boilers are excluded, so totals are a lower bound for tankers; stays shorter than 1 h or longer than 240 h are removed as AIS artefacts or lay-ups; passenger ships, ferries, offshore and fishing vessels are outside the inventory; Finnish DWT missing in the register (about 15% of calls) was imputed from gross tonnage by segment. Shore-power scenarios assume full uptake and 97% transmission efficiency; they are a technical ceiling, not a forecast.
 
-## Fluxo
+## Data sources
 
-1. Baixar os dias desejados de `https://web.ais.dk/aisdata/` (ex.: `aisdk-2026-10-01.zip`) para `brutos/`.
-2. `python3 filtrar_aisdk.py --porto aarhus --entrada brutos --saida filtrado --apagar`
-   (mantém só Class A, dentro da caixa do porto, sem pesca/lazer/rebocador; alguns MB por dia).
-3. Próximo passo (a escrever): `escalas.py` para reconstruir escalas por MMSI (fundeio, manobra, atracação)
-   a partir de SOG, status de navegação e polígonos de cais; depois `maritimeco2` para o CO2 por fase.
+| Country | Source | Licence | Content |
+|---|---|---|---|
+| Finland | [Fintraffic Digitraffic port-call API](https://www.digitraffic.fi/en/marine-traffic/) | CC BY 4.0 | 219,410 calls with IMO, berth, ATA, ATD; vessel register with GT, DWT, engine power |
+| Norway | [Kystverket Kystdatahuset API](https://kystdatahuset.no) | Open | 211,965 calls in 19 ports with GT and DWT |
+| Grid factors | [Statistics Finland, table 14qt](https://pxdata.stat.fi/PxWeb/pxweb/en/StatFin/StatFin__ehk/statfin_ehk_pxt_14qt.px); NVE climate declaration (Norway) | Open | g CO2/kWh by year |
+| Engine parameters | IMO (2020), Fourth IMO GHG Study | | Auxiliary power by segment and size class |
 
-## Caixas dos portos (lat_min, lat_max, lon_min, lon_max)
+Data downloaded on 9 November 2026. The page embeds aggregated results only; call-level tables are available on request.
 
-Ver `PORTOS` em `filtrar_aisdk.py`; ajustar quando os polígonos de cais estiverem definidos.
+## Files
+
+- `index.html`: the page, a single self-contained file (no external dependencies)
+- `template.html`: page template with a `/*__DATA__*/` placeholder
+- `build_site.py`: reads the result tables of the inventory and writes `index.html`
+
+## Licence and citation
+
+Analysis and charts: CC BY 4.0, Darliane Ribeiro Cunha, PhD, https://orcid.org/0000-0003-2548-1237
+
+Cite as: Cunha, D. R. (2026). Nordic At-Berth CO2: at-berth emissions of cargo ships in Finnish and Norwegian ports, 2019-2025, from open port-call registers. https://nordic-at-berth.vercel.app
