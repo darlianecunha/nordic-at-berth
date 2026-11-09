@@ -14,6 +14,7 @@ fi_berth["name"] = fi_berth.berco.map(lambda b: PORT_NAMES.get(b.split(":")[0], 
 no_port = pd.read_csv(os.path.join(NO, "porto_ano_kt.csv"))
 fi_t5 = pd.read_csv(os.path.join(FI, "t5_indicadores_anuais.csv"), index_col=0); no_t5 = pd.read_csv(os.path.join(NO, "t5_indicadores_anuais.csv"), index_col=0)
 fi_t5.index = fi_t5.index.astype(str); no_t5.index = no_t5.index.astype(str)
+fi_t5 = fi_t5[fi_t5.index.isin(YEARS)]; no_t5 = no_t5[no_t5.index.isin(YEARS)]  # remove a linha "var_%" da tabela anual
 fi_lm = pd.read_csv(os.path.join(FI, "lmdi.csv")); no_lm = pd.read_csv(os.path.join(NO, "lmdi.csv"))
 fi_t7 = pd.read_csv(os.path.join(FI, "t7_ops.csv"), index_col=0); no_t7 = pd.read_csv(os.path.join(NO, "t7_ops.csv"), index_col=0)
 fi_seg = pd.read_csv(os.path.join(FI, "t6_segmento.csv")); no_seg = pd.read_csv(os.path.join(NO, "t6_segmento.csv"))
